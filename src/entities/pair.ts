@@ -1,11 +1,21 @@
-import { BigintIsh, Price, sqrt, Token, CurrencyAmount } from '@uniswap/sdk-core'
-import invariant from 'tiny-invariant'
-import JSBI from 'jsbi'
-import { pack, keccak256 } from '@ethersproject/solidity'
 import { getCreate2Address } from '@ethersproject/address'
+import { keccak256, pack } from '@ethersproject/solidity'
+import { BigintIsh, CurrencyAmount, Price, sqrt, Token } from '@uniswap/sdk-core'
+import JSBI from 'jsbi'
+import invariant from 'tiny-invariant'
 
-import { FACTORY_ADDRESS, INIT_CODE_HASH, MINIMUM_LIQUIDITY, FIVE, _997, _1000, ONE, ZERO } from '../constants'
-import { InsufficientReservesError, InsufficientInputAmountError } from '../errors'
+import {
+  _1000,
+  _997,
+  FACTORY_ADDRESS,
+  FACTORY_ADDRESS_MAP,
+  FIVE,
+  INIT_CODE_HASH,
+  MINIMUM_LIQUIDITY,
+  ONE,
+  ZERO
+} from '../constants'
+import { InsufficientInputAmountError, InsufficientReservesError } from '../errors'
 
 export const computePairAddress = ({
   factoryAddress,
@@ -28,7 +38,8 @@ export class Pair {
   private readonly tokenAmounts: [CurrencyAmount<Token>, CurrencyAmount<Token>]
 
   public static getAddress(tokenA: Token, tokenB: Token): string {
-    return computePairAddress({ factoryAddress: FACTORY_ADDRESS, tokenA, tokenB })
+    const factoryAddress = FACTORY_ADDRESS_MAP[tokenA.chainId] ?? FACTORY_ADDRESS
+    return computePairAddress({ factoryAddress, tokenA, tokenB })
   }
 
   public constructor(currencyAmountA: CurrencyAmount<Token>, tokenAmountB: CurrencyAmount<Token>) {

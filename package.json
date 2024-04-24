@@ -1,5 +1,5 @@
 {
-  "name": "@uniswap/v2-sdk",
+  "name": "@lorentz-l/v2-sdk",
   "license": "MIT",
   "version": "3.0.1",
   "description": "🛠 An SDK for building applications on top of Uniswap V2",
@@ -8,14 +8,14 @@
   "files": [
     "dist"
   ],
-  "repository": "https://github.com/Uniswap/uniswap-v2-sdk.git",
+  "repository": "https://github.com/lorentz-l/uniswap-v2-sdk.git",
   "keywords": [
     "uniswap",
     "ethereum"
   ],
   "module": "dist/v2-sdk.esm.js",
   "scripts": {
-    "lint": "tsdx lint src test",
+    "lint": "tsdx lint src",
     "build": "tsdx build",
     "start": "tsdx watch",
     "test": "tsdx test",
