@@ -18,6 +18,8 @@ export const FACTORY_ADDRESS_MAP: { [chainId: number]: string } = {
   [ChainId.POLYGON]: '0x9e5A52f57b3038F1B8EeE45F28b3C1967e22799C',
   [ChainId.CELO]: '0x79a530c8e2fA8748B7B40dd3629C0520c2cCf03f',
   [ChainId.BLAST]: '0x5C346464d33F90bABaf70dB6388507CC889C1070',
+
+  // bevmswap v1
   [ChainId.BEVM]: '0xAdEFa8CFD0655e319559c482c1443Cc6fa804C1F',
   [ChainId.BEVM_CANARY_TESTNET]: '0x1045D426488B359592864D3BDC3a64ebEBcDdf96',
   [ChainId.BITLAYER_TESTNET]: '0x57e0e352a82928a28ce453d9a9fa005a9922aa49'
@@ -37,9 +39,20 @@ export const INIT_CODE_HASH_MAP: { [chainId: number]: string } = {
 
 export const MINIMUM_LIQUIDITY = JSBI.BigInt(1000)
 
+/**
+ * default from uniswap
+ */
+export const TRADE_FEE = JSBI.BigInt(9970) // 0.3%
+
+export const TRADE_FEE_MAP: { [chainId: number]: JSBI } = {
+  // bevmswap v1: 0.4%
+  [ChainId.BEVM]: JSBI.BigInt(9960),
+  [ChainId.BEVM_CANARY_TESTNET]: JSBI.BigInt(9960),
+  [ChainId.BITLAYER_TESTNET]: JSBI.BigInt(9960)
+}
+
 // exports for internal consumption
 export const ZERO = JSBI.BigInt(0)
 export const ONE = JSBI.BigInt(1)
 export const FIVE = JSBI.BigInt(5)
-export const _997 = JSBI.BigInt(997)
-export const _1000 = JSBI.BigInt(1000)
+export const _10000 = JSBI.BigInt(10000)
