@@ -1039,6 +1039,41 @@ var Router = /*#__PURE__*/function () {
     };
   };
 
+  Router.removeCallParameters = function removeCallParameters(pair, token0, token1, totalSupply, balance, decreasePercent, options) {
+    var ether0 = token0.isNative;
+    var ether1 = token1.isNative; // the router does not support both ether in and out
+
+    !!(ether0 && ether1) ?  invariant(false, 'ETHER_IN_OUT')  : void 0;
+    !(!('ttl' in options) || options.ttl > 0) ?  invariant(false, 'TTL')  : void 0; // todo: invariant ETH and WETH
+
+    var to = sdkCore.validateAndParseAddress(options.recipient);
+    var slippageAdjusted = new sdkCore.Fraction(ONE).add(options.allowedSlippage).invert();
+    var liquidity = new sdkCore.Fraction(balance).multiply(decreasePercent).divide(100);
+    var removePercent = liquidity.divide(totalSupply);
+    var amountAMin = pair.reserve0.multiply(removePercent).multiply(slippageAdjusted).quotient.toString();
+    var amountBMin = pair.reserve1.multiply(removePercent).multiply(slippageAdjusted).quotient.toString();
+    var deadline = 'ttl' in options ? "0x" + (Math.floor(new Date().getTime() / 1000) + options.ttl).toString(16) : "0x" + options.deadline.toString(16);
+    var methodName;
+    var args;
+
+    if (ether0) {
+      methodName = 'removeLiquidityETH';
+      args = [pair.token1.address, liquidity.quotient.toString(), amountBMin, amountAMin, to, deadline];
+    } else if (ether1) {
+      methodName = 'removeLiquidityETH';
+      args = [pair.token0.address, liquidity.quotient.toString(), amountAMin, amountBMin, to, deadline];
+    } else {
+      methodName = 'removeLiquidity';
+      args = [pair.token0.address, pair.token1.address, liquidity.quotient.toString(), amountAMin, amountBMin, to, deadline];
+    }
+
+    return {
+      methodName: methodName,
+      args: args,
+      value: ZERO_HEX
+    };
+  };
+
   return Router;
 }();
 

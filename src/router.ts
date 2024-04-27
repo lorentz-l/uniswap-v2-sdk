@@ -262,4 +262,69 @@ export abstract class Router {
       value
     }
   }
+
+  public static removeCallParameters(
+    pair: Pair,
+    token0: Currency,
+    token1: Currency,
+    totalSupply: string,
+    balance: string,
+    decreasePercent: number,
+    options: TradeOptions | TradeOptionsDeadline
+  ): SwapParameters {
+    const ether0 = token0.isNative
+    const ether1 = token1.isNative
+    // the router does not support both ether in and out
+    invariant(!(ether0 && ether1), 'ETHER_IN_OUT')
+    invariant(!('ttl' in options) || options.ttl > 0, 'TTL')
+
+    // todo: invariant ETH and WETH
+
+    const to: string = validateAndParseAddress(options.recipient)
+
+    const slippageAdjusted = new Fraction(ONE).add(options.allowedSlippage).invert()
+
+    const liquidity = new Fraction(balance).multiply(decreasePercent).divide(100)
+    const removePercent = liquidity.divide(totalSupply)
+    const amountAMin = pair.reserve0
+      .multiply(removePercent)
+      .multiply(slippageAdjusted)
+      .quotient.toString()
+    const amountBMin = pair.reserve1
+      .multiply(removePercent)
+      .multiply(slippageAdjusted)
+      .quotient.toString()
+
+    const deadline =
+      'ttl' in options
+        ? `0x${(Math.floor(new Date().getTime() / 1000) + options.ttl).toString(16)}`
+        : `0x${options.deadline.toString(16)}`
+
+    let methodName: string
+    let args: (string | string[])[]
+    if (ether0) {
+      methodName = 'removeLiquidityETH'
+      args = [pair.token1.address, liquidity.quotient.toString(), amountBMin, amountAMin, to, deadline]
+    } else if (ether1) {
+      methodName = 'removeLiquidityETH'
+      args = [pair.token0.address, liquidity.quotient.toString(), amountAMin, amountBMin, to, deadline]
+    } else {
+      methodName = 'removeLiquidity'
+      args = [
+        pair.token0.address,
+        pair.token1.address,
+        liquidity.quotient.toString(),
+        amountAMin,
+        amountBMin,
+        to,
+        deadline
+      ]
+    }
+
+    return {
+      methodName,
+      args,
+      value: ZERO_HEX
+    }
+  }
 }

@@ -63,4 +63,5 @@ export declare abstract class Router {
      */
     static swapCallParameters(trade: Trade<Currency, Currency, TradeType>, options: TradeOptions | TradeOptionsDeadline): SwapParameters;
     static addCallParameters(pair: Pair, amount0: CurrencyAmount<Currency>, amount1: CurrencyAmount<Currency>, options: TradeOptions | TradeOptionsDeadline): SwapParameters;
+    static removeCallParameters(pair: Pair, token0: Currency, token1: Currency, totalSupply: string, balance: string, decreasePercent: number, options: TradeOptions | TradeOptionsDeadline): SwapParameters;
 }
