@@ -877,6 +877,9 @@ function toHex(currencyAmount) {
 }
 
 var ZERO_HEX = '0x0';
+var quote = function quote(amountA, reserveA, reserveB) {
+  return amountA.multiply(reserveA).divide(reserveB);
+};
 /**
  * Represents the Uniswap V2 Router, and has static methods for helping execute trades.
  */
@@ -962,6 +965,80 @@ var Router = /*#__PURE__*/function () {
     };
   };
 
+  Router.addCallParameters = function addCallParameters(pair, amount0, amount1, options) {
+    var ether0 = amount0.currency.isNative;
+    var ether1 = amount1.currency.isNative; // the router does not support both ether in and out
+
+    !!(ether0 && ether1) ?  invariant(false, 'ETHER_IN_OUT')  : void 0;
+    !(!('ttl' in options) || options.ttl > 0) ?  invariant(false, 'TTL')  : void 0; // todo: invariant ETH and WETH
+
+    var to = sdkCore.validateAndParseAddress(options.recipient);
+    var slippageAdjusted = new sdkCore.Fraction(ONE).add(options.allowedSlippage).invert();
+    var amountADesired = amount0.quotient.toString();
+    var amountBDesired = amount1.quotient.toString();
+    var amountAMin = slippageAdjusted.multiply(amountADesired).add(1).quotient.toString();
+    var amountBMin = slippageAdjusted.multiply(amountBDesired).add(1).quotient.toString();
+    console.log('amountADesired:', amountADesired);
+    console.log('amountAMin    :', amountAMin);
+    console.log('amountBDesired:', amountBDesired);
+    console.log('amountBMin    :', amountBMin);
+
+    if (!(pair.reserve0.equalTo(0) && pair.reserve1.equalTo(0))) {
+      var amountBOptimal = quote(amount0, pair.reserve1, pair.reserve0).quotient.toString();
+      console.log('amountBOptimal:', amountBOptimal);
+
+      if (Number(amountBOptimal) <= Number(amountBDesired)) {
+        console.log('amountBOptimal <= amountBDesired');
+
+        if (Number(amountBOptimal) < Number(amountBMin)) {
+          // or throw error
+          console.log('amountBOptimal < amountBMin');
+          amountBDesired = amountBOptimal;
+          amountBMin = slippageAdjusted.multiply(amountBDesired).add(1).quotient.toString();
+        }
+      } else {
+        var amountAOptimal = quote(amount1, pair.reserve0, pair.reserve1).quotient.toString();
+        console.log('amountAOptimal:', amountAOptimal);
+
+        if (Number(amountAOptimal) <= Number(amountADesired)) {
+          console.log('amountAOptimal <= amountADesired');
+
+          if (Number(amountAOptimal) < Number(amountAMin)) {
+            // or throw error
+            console.log('amountAOptimal < amountAMin');
+            amountADesired = amountAOptimal;
+            amountAMin = slippageAdjusted.multiply(amountADesired).add(1).quotient.toString();
+          }
+        }
+      }
+    }
+
+    var deadline = 'ttl' in options ? "0x" + (Math.floor(new Date().getTime() / 1000) + options.ttl).toString(16) : "0x" + options.deadline.toString(16);
+    var methodName;
+    var args;
+    var value;
+
+    if (ether0) {
+      methodName = 'addLiquidityETH';
+      args = [pair.token1.address, amountBDesired, amountBMin, amountAMin, to, deadline];
+      value = amountADesired;
+    } else if (ether1) {
+      methodName = 'addLiquidityETH';
+      args = [pair.token0.address, amountADesired, amountAMin, amountBMin, to, deadline];
+      value = amountBDesired;
+    } else {
+      methodName = 'addLiquidity';
+      args = [pair.token0.address, pair.token1.address, amountADesired, amountBDesired, amountAMin, amountBMin, to, deadline];
+      value = ZERO_HEX;
+    }
+
+    return {
+      methodName: methodName,
+      args: args,
+      value: value
+    };
+  };
+
   return Router;
 }();
 
@@ -981,5 +1058,6 @@ exports.TRADE_FEE_MAP = TRADE_FEE_MAP;
 exports.Trade = Trade;
 exports.computePairAddress = computePairAddress;
 exports.inputOutputComparator = inputOutputComparator;
+exports.quote = quote;
 exports.tradeComparator = tradeComparator;
 //# sourceMappingURL=v2-sdk.cjs.development.js.map

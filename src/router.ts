@@ -1,6 +1,15 @@
-import { Token, Currency, CurrencyAmount, Percent, TradeType, validateAndParseAddress } from '@uniswap/sdk-core'
-import { Trade } from './entities'
+import {
+  Currency,
+  CurrencyAmount,
+  Fraction,
+  Percent,
+  Token,
+  TradeType,
+  validateAndParseAddress
+} from '@uniswap/sdk-core'
 import invariant from 'tiny-invariant'
+import { ONE } from './constants'
+import { Pair, Trade } from './entities'
 
 /**
  * Options for producing the arguments to send call to the router.
@@ -59,6 +68,10 @@ function toHex(currencyAmount: CurrencyAmount<Currency>) {
 
 const ZERO_HEX = '0x0'
 
+export const quote = (amountA: Fraction, reserveA: Fraction, reserveB: Fraction): Fraction => {
+  return amountA.multiply(reserveA).divide(reserveB)
+}
+
 /**
  * Represents the Uniswap V2 Router, and has static methods for helping execute trades.
  */
@@ -67,6 +80,7 @@ export abstract class Router {
    * Cannot be constructed.
    */
   private constructor() {}
+
   /**
    * Produces the on-chain method name to call and the hex encoded parameters to pass as arguments for a given trade.
    * @param trade to produce call parameters for
@@ -137,6 +151,111 @@ export abstract class Router {
         }
         break
     }
+    return {
+      methodName,
+      args,
+      value
+    }
+  }
+
+  public static addCallParameters(
+    pair: Pair,
+    amount0: CurrencyAmount<Currency>,
+    amount1: CurrencyAmount<Currency>,
+    options: TradeOptions | TradeOptionsDeadline
+  ): SwapParameters {
+    const ether0 = amount0.currency.isNative
+    const ether1 = amount1.currency.isNative
+    // the router does not support both ether in and out
+    invariant(!(ether0 && ether1), 'ETHER_IN_OUT')
+    invariant(!('ttl' in options) || options.ttl > 0, 'TTL')
+
+    // todo: invariant ETH and WETH
+
+    const to: string = validateAndParseAddress(options.recipient)
+
+    const slippageAdjusted = new Fraction(ONE).add(options.allowedSlippage).invert()
+    let amountADesired = amount0.quotient.toString()
+    let amountBDesired = amount1.quotient.toString()
+    let amountAMin = slippageAdjusted
+      .multiply(amountADesired)
+      .add(1)
+      .quotient.toString()
+    let amountBMin = slippageAdjusted
+      .multiply(amountBDesired)
+      .add(1)
+      .quotient.toString()
+
+    console.log('amountADesired:', amountADesired)
+    console.log('amountAMin    :', amountAMin)
+    console.log('amountBDesired:', amountBDesired)
+    console.log('amountBMin    :', amountBMin)
+
+    if (!(pair.reserve0.equalTo(0) && pair.reserve1.equalTo(0))) {
+      const amountBOptimal = quote(amount0, pair.reserve1, pair.reserve0).quotient.toString()
+      console.log('amountBOptimal:', amountBOptimal)
+      if (Number(amountBOptimal) <= Number(amountBDesired)) {
+        console.log('amountBOptimal <= amountBDesired')
+        if (Number(amountBOptimal) < Number(amountBMin)) {
+          // or throw error
+          console.log('amountBOptimal < amountBMin')
+          amountBDesired = amountBOptimal
+          amountBMin = slippageAdjusted
+            .multiply(amountBDesired)
+            .add(1)
+            .quotient.toString()
+        }
+      } else {
+        const amountAOptimal = quote(amount1, pair.reserve0, pair.reserve1).quotient.toString()
+        console.log('amountAOptimal:', amountAOptimal)
+        if (Number(amountAOptimal) <= Number(amountADesired)) {
+          console.log('amountAOptimal <= amountADesired')
+          if (Number(amountAOptimal) < Number(amountAMin)) {
+            // or throw error
+            console.log('amountAOptimal < amountAMin')
+            amountADesired = amountAOptimal
+            amountAMin = slippageAdjusted
+              .multiply(amountADesired)
+              .add(1)
+              .quotient.toString()
+          }
+        } else {
+          // todo: error?
+        }
+      }
+    }
+
+    const deadline =
+      'ttl' in options
+        ? `0x${(Math.floor(new Date().getTime() / 1000) + options.ttl).toString(16)}`
+        : `0x${options.deadline.toString(16)}`
+
+    let methodName: string
+    let args: (string | string[])[]
+    let value: string
+    if (ether0) {
+      methodName = 'addLiquidityETH'
+      args = [pair.token1.address, amountBDesired, amountBMin, amountAMin, to, deadline]
+      value = amountADesired
+    } else if (ether1) {
+      methodName = 'addLiquidityETH'
+      args = [pair.token0.address, amountADesired, amountAMin, amountBMin, to, deadline]
+      value = amountBDesired
+    } else {
+      methodName = 'addLiquidity'
+      args = [
+        pair.token0.address,
+        pair.token1.address,
+        amountADesired,
+        amountBDesired,
+        amountAMin,
+        amountBMin,
+        to,
+        deadline
+      ]
+      value = ZERO_HEX
+    }
+
     return {
       methodName,
       args,

@@ -1,5 +1,5 @@
-import { Currency, Percent, TradeType } from '@uniswap/sdk-core';
-import { Trade } from './entities';
+import { Currency, CurrencyAmount, Fraction, Percent, TradeType } from '@uniswap/sdk-core';
+import { Pair, Trade } from './entities';
 /**
  * Options for producing the arguments to send call to the router.
  */
@@ -47,6 +47,7 @@ export interface SwapParameters {
      */
     value: string;
 }
+export declare const quote: (amountA: Fraction, reserveA: Fraction, reserveB: Fraction) => Fraction;
 /**
  * Represents the Uniswap V2 Router, and has static methods for helping execute trades.
  */
@@ -61,4 +62,5 @@ export declare abstract class Router {
      * @param options options for the call parameters
      */
     static swapCallParameters(trade: Trade<Currency, Currency, TradeType>, options: TradeOptions | TradeOptionsDeadline): SwapParameters;
+    static addCallParameters(pair: Pair, amount0: CurrencyAmount<Currency>, amount1: CurrencyAmount<Currency>, options: TradeOptions | TradeOptionsDeadline): SwapParameters;
 }
